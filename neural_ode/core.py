@@ -53,9 +53,6 @@ class NeuralODEClassifier(nn.Module):
         encoder_type="parabola",
         integration_end=1.0,
         decoder_mlp=False,
-        ode_method="dopri5",
-        ode_rtol=1e-4,
-        ode_atol=1e-4,
     ):
         super().__init__()
 
@@ -64,9 +61,6 @@ class NeuralODEClassifier(nn.Module):
         self.hidden_dim = hidden_dim
         self.encoder_type = encoder_type
         self.decoder_mlp = decoder_mlp
-        self.ode_method = ode_method
-        self.ode_rtol = ode_rtol
-        self.ode_atol = ode_atol
 
         self.func = ODEFunc(state_dim=latent_dim, hidden_dim=hidden_dim)
         if decoder_mlp:
@@ -99,9 +93,8 @@ class NeuralODEClassifier(nn.Module):
             self.func,
             z0,
             ts,
-            rtol=self.ode_rtol,
-            atol=self.ode_atol,
-            method=self.ode_method,
+            method="euler",
+            options={"step_size": 0.01},
         )
 
     def forward(self, x):
