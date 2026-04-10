@@ -1,6 +1,6 @@
 # Neural ODEs Project 1
 
-This repository contains code and report for Project 1 of the Neural ODEs course. The network and training code is contained in the `neural_ode` directory, while experiments and report are in `node.ipynb` notebook.
+This repository contains code and report for Project 1 of the Neural ODEs course. The network and training code is contained in the `neural_ode` directory, while experiments and visualizations are in `node.ipynb` notebook.
 
 ## Setup
 
