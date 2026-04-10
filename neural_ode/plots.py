@@ -52,8 +52,8 @@ def plot_training_history(result, title=None):
     fig.update_yaxes(title_text="Validation loss", row=1, col=2)
     fig.update_layout(
         template="plotly_white",
-        width=615,
-        height=283,
+        width=600,
+        height=280,
         margin=dict(l=75, r=22, t=82, b=60),
     )
     fig.show()
@@ -119,13 +119,8 @@ def plot_predictions_1d(result, device="cpu"):
     fig.update_xaxes(title_text="x", row=n_plots, col=1)
     fig.update_layout(
         template="plotly_white",
-        width=615,
-        height=int(
-            round(
-                518 / 1.618033988749895 * n_plots / (1 - vertical_spacing * (n_plots - 1))
-                + 142
-            )
-        ),
+        width=600,
+        height=460,
         hovermode="x unified",
         margin=dict(l=75, r=22, t=82, b=60),
     )
@@ -213,8 +208,8 @@ def plot_latent_trajectories_2d(model_result, device="cpu", n_points=15):
         yaxis_title="z2",
         legend_title_text="Target class",
         template="plotly_white",
-        width=615,
-        height=615,
+        width=600,
+        height=600,
         margin=dict(l=68, r=22, t=82, b=60),
     )
     fig.update_xaxes(showgrid=True, gridcolor="rgba(0, 0, 0, 0.15)")
@@ -270,8 +265,8 @@ def plot_final_latent_and_classes(model_result, device="cpu"):
         yaxis_title="z2(T)",
         legend_title_text="Target class",
         template="plotly_white",
-        width=615,
-        height=615,
+        width=600,
+        height=600,
         margin=dict(l=68, r=22, t=82, b=60),
     )
     fig.update_xaxes(showgrid=True, gridcolor="rgba(0, 0, 0, 0.15)")
@@ -352,8 +347,8 @@ def plot_head_predictions_2d(
         xaxis_title="z1",
         yaxis_title="z2",
         template="plotly_white",
-        width=615,
-        height=615,
+        width=600,
+        height=600,
         margin=dict(l=68, r=22, t=82, b=60),
     )
     fig.update_xaxes(range=[-grid_limit, grid_limit], showgrid=False)
@@ -414,8 +409,8 @@ def summary_barplot(results, model_name=None):
         yaxis_title="Test accuracy",
         yaxis_range=[0.0, 1.0],
         template="plotly_white",
-        width=615,
-        height=615,
+        width=600,
+        height=600,
         margin=dict(l=68, r=22, t=82, b=60),
     )
     fig.show()
