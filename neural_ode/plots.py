@@ -7,24 +7,63 @@ from plotly.subplots import make_subplots
 from .core import first_decimal_digit_label
 
 PLOT_TEMPLATE = "plotly_white"
-SQUARE_FIGURE_SIZE = 820
+GOLDEN_RATIO = (1 + np.sqrt(5)) / 2
+SQUARE_FIGURE_SIZE = 615
+WIDE_FIGURE_WIDTH = 615
 CLASS_COLORS = qualitative.Plotly
+SQUARE_MARGIN = dict(l=68, r=22, t=82, b=60)
+WIDE_MARGIN = dict(l=75, r=22, t=82, b=60)
 
 
 def _class_color(label):
     return CLASS_COLORS[int(label) % len(CLASS_COLORS)]
 
 
+def _class_colorscale(n_classes=10):
+    colorscale = []
+    for class_label in range(n_classes):
+        left = class_label / n_classes
+        right = (class_label + 1) / n_classes
+        color = _class_color(class_label)
+        colorscale.append((left, color))
+        colorscale.append((right, color))
+    return colorscale
+
+
+def _single_row_figure_height(
+    n_cols=1,
+    horizontal_spacing=0.0,
+    width=WIDE_FIGURE_WIDTH,
+    margin=WIDE_MARGIN,
+):
+    plot_width = width - margin["l"] - margin["r"]
+    subplot_width = plot_width * (1 - horizontal_spacing * (n_cols - 1)) / n_cols
+    return int(round(subplot_width / GOLDEN_RATIO + margin["t"] + margin["b"]))
+
+
+def _stacked_figure_height(
+    n_rows,
+    vertical_spacing=0.0,
+    width=WIDE_FIGURE_WIDTH,
+    margin=WIDE_MARGIN,
+):
+    plot_width = width - margin["l"] - margin["r"]
+    subplot_height = plot_width / GOLDEN_RATIO
+    content_height = subplot_height * n_rows / (1 - vertical_spacing * (n_rows - 1))
+    return int(round(content_height + margin["t"] + margin["b"]))
+
+
 def plot_training_history(result, title=None):
     title = title or f"N = {result.n_train}"
     histories = result.histories()
     show_legend = len(histories) > 1
+    horizontal_spacing = 0.12
 
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(f"{title} - val acc", f"{title} - val loss"),
-        horizontal_spacing=0.12,
+        horizontal_spacing=horizontal_spacing,
     )
 
     for label, history in histories.items():
@@ -60,9 +99,12 @@ def plot_training_history(result, title=None):
     fig.update_yaxes(title_text="Validation loss", row=1, col=2)
     fig.update_layout(
         template=PLOT_TEMPLATE,
-        width=SQUARE_FIGURE_SIZE,
-        height=SQUARE_FIGURE_SIZE,
-        margin=dict(l=70, r=30, t=90, b=70),
+        width=WIDE_FIGURE_WIDTH,
+        height=_single_row_figure_height(
+            n_cols=2,
+            horizontal_spacing=horizontal_spacing,
+        ),
+        margin=WIDE_MARGIN,
     )
     fig.show()
 
@@ -74,12 +116,13 @@ def plot_predictions_1d(result, device="cpu"):
 
     models = result.models()
     n_plots = len(models)
+    vertical_spacing = 0.08
     fig = make_subplots(
         rows=n_plots,
         cols=1,
         shared_xaxes=True,
         subplot_titles=tuple(models.keys()),
-        vertical_spacing=0.08,
+        vertical_spacing=vertical_spacing,
     )
 
     for index, (name, model) in enumerate(models.items(), start=1):
@@ -126,10 +169,13 @@ def plot_predictions_1d(result, device="cpu"):
     fig.update_xaxes(title_text="x", row=n_plots, col=1)
     fig.update_layout(
         template=PLOT_TEMPLATE,
-        width=SQUARE_FIGURE_SIZE,
-        height=SQUARE_FIGURE_SIZE,
+        width=WIDE_FIGURE_WIDTH,
+        height=_stacked_figure_height(
+            n_rows=n_plots,
+            vertical_spacing=vertical_spacing,
+        ),
         hovermode="x unified",
-        margin=dict(l=70, r=30, t=90, b=70),
+        margin=WIDE_MARGIN,
     )
     fig.show()
 
@@ -217,7 +263,7 @@ def plot_latent_trajectories_2d(model_result, device="cpu", n_points=15):
         template=PLOT_TEMPLATE,
         width=SQUARE_FIGURE_SIZE,
         height=SQUARE_FIGURE_SIZE,
-        margin=dict(l=70, r=30, t=90, b=70),
+        margin=SQUARE_MARGIN,
     )
     fig.update_xaxes(showgrid=True, gridcolor="rgba(0, 0, 0, 0.15)")
     fig.update_yaxes(
@@ -274,7 +320,7 @@ def plot_final_latent_and_classes(model_result, device="cpu"):
         template=PLOT_TEMPLATE,
         width=SQUARE_FIGURE_SIZE,
         height=SQUARE_FIGURE_SIZE,
-        margin=dict(l=70, r=30, t=90, b=70),
+        margin=SQUARE_MARGIN,
     )
     fig.update_xaxes(showgrid=True, gridcolor="rgba(0, 0, 0, 0.15)")
     fig.update_yaxes(
@@ -286,11 +332,82 @@ def plot_final_latent_and_classes(model_result, device="cpu"):
     fig.show()
 
 
+def plot_head_predictions_2d(
+    model_result,
+    device="cpu",
+    grid_limit=50.0,
+    grid_points=301,
+):
+    model = model_result.model
+    if model.latent_dim < 2:
+        raise ValueError("This plot is only available for latent_dim >= 2.")
+
+    axis = torch.linspace(-grid_limit, grid_limit, grid_points, device=device)
+    z2_grid, z1_grid = torch.meshgrid(axis, axis, indexing="ij")
+    latent_grid = torch.zeros(
+        grid_points * grid_points,
+        model.latent_dim,
+        device=device,
+    )
+    latent_grid[:, 0] = z1_grid.reshape(-1)
+    latent_grid[:, 1] = z2_grid.reshape(-1)
+
+    model.eval()
+    with torch.no_grad():
+        logits = model.decoder(latent_grid)
+        pred = torch.argmax(logits, dim=1).reshape(grid_points, grid_points).cpu().numpy()
+
+    axis_values = axis.cpu().numpy()
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                x=axis_values,
+                y=axis_values,
+                z=pred,
+                zmin=-0.5,
+                zmax=9.5,
+                colorscale=_class_colorscale(),
+                showscale=True,
+                colorbar=dict(
+                    title="Predicted class",
+                    tickmode="array",
+                    tickvals=list(range(10)),
+                    ticktext=[str(class_label) for class_label in range(10)],
+                ),
+                hovertemplate=(
+                    "z1=%{x:.2f}<br>"
+                    "z2=%{y:.2f}<br>"
+                    "predicted class=%{z}<extra></extra>"
+                ),
+            )
+        ]
+    )
+    fig.update_layout(
+        title=f"Head predictions on latent grid: {model_result.name}",
+        xaxis_title="z1",
+        yaxis_title="z2",
+        template=PLOT_TEMPLATE,
+        width=SQUARE_FIGURE_SIZE,
+        height=SQUARE_FIGURE_SIZE,
+        margin=SQUARE_MARGIN,
+    )
+    fig.update_xaxes(range=[-grid_limit, grid_limit], showgrid=False)
+    fig.update_yaxes(
+        range=[-grid_limit, grid_limit],
+        showgrid=False,
+        scaleanchor="x",
+        scaleratio=1,
+    )
+    fig.show()
+
+
 def plot_experiment_report(
     result,
     device="cpu",
     augmented_model_name=None,
     latent_trajectory_points=17,
+    head_grid_limit=50.0,
+    head_grid_points=301,
 ):
     plot_training_history(result, title=f"N = {result.n_train}")
     plot_predictions_1d(result, device=device)
@@ -306,6 +423,12 @@ def plot_experiment_report(
         n_points=latent_trajectory_points,
     )
     plot_final_latent_and_classes(augmented_result, device=device)
+    plot_head_predictions_2d(
+        augmented_result,
+        device=device,
+        grid_limit=head_grid_limit,
+        grid_points=head_grid_points,
+    )
 
 
 def summary_barplot(results, model_name=None):
@@ -332,6 +455,6 @@ def summary_barplot(results, model_name=None):
         template=PLOT_TEMPLATE,
         width=SQUARE_FIGURE_SIZE,
         height=SQUARE_FIGURE_SIZE,
-        margin=dict(l=70, r=30, t=90, b=70),
+        margin=SQUARE_MARGIN,
     )
     fig.show()
