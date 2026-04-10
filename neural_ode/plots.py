@@ -385,32 +385,3 @@ def plot_experiment_report(
         grid_limit=head_grid_limit,
         grid_points=head_grid_points,
     )
-
-
-def summary_barplot(results, model_name=None):
-    ns = [result.n_train for result in results]
-
-    if model_name is None:
-        model_name = results[0].model_results[0].name
-
-    test_acc = [result.get_model_result(model_name).test_acc for result in results]
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=[str(n) for n in ns],
-                y=test_acc,
-                name=model_name,
-            )
-        ]
-    )
-    fig.update_layout(
-        title="Neural ODE accuracy by training set size",
-        xaxis_title="Training set size",
-        yaxis_title="Test accuracy",
-        yaxis_range=[0.0, 1.0],
-        template="plotly_white",
-        width=600,
-        height=600,
-        margin=dict(l=68, r=22, t=82, b=60),
-    )
-    fig.show()
